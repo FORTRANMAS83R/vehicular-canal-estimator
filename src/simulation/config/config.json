@@ -1,0 +1,33 @@
+{
+  "seed": 18274,
+  "nb_samples": 1000,
+  "traffic": {
+    "type_of_scene": "straight_road_urban",
+    "minimum_velocity": 0,
+    "maximum_velocity": 50,
+    "minimum_acceleration": 0,
+    "maximum_acceleration": 5,
+    "minimum_distance": 3,
+    "__comment": "The minimum distance between vehicles in meters",
+    "lane_1": {
+      "nb_vehicles": 10,
+      "vehicule_step": 10,
+      "spawn_range": [
+        [0, 0],
+        [100, 0]
+      ],
+      "__comment": "Minimum and maximum x and y coordinates of the spawn range"
+    },
+    "lane_2": {
+      "nb_vehicles": 10,
+      "vehicule_step": 10,
+      "spawn_range": [
+        [0, 0],
+        [100, 0]
+      ]
+    }
+  },
+  "emmiter": {
+    "f": 7e9
+  }
+}
