@@ -10,6 +10,7 @@ function simulation(json_file)
 
     % Add the vehicles directory to the MATLAB path
     addpath('src/simulation/vehicles');
+    addpath('src/simulation/raytrace');
 
     % Check if the JSON configuration file exists
     if ~isfile(json_file)
@@ -21,37 +22,70 @@ function simulation(json_file)
     conf = jsondecode(raw);
 
     % Calculate the coherence time based on the maximum Doppler shift
-    % T_c = (0.423 * c) / (v_max * f), where:
-    %   c = speed of light (3 * 10^8 m/s)
-    %   v_max = maximum velocity (m/s)
-    %   f = emitter frequency (Hz)
-    T_c = (0.423 * 3e8) / (conf.traffic.maximum_velocity * conf.emmiter.f); % in seconds
+    T_c = (0.423 * 3e8) / (conf.vehicles.v_max * conf.emitter.f); % in seconds
     fprintf('Simulation duration: %.4f milliseconds\n', T_c * 1000);
 
     % Run the traffic simulation
-    [p1, v1, a1, p2, a2, v2] = simulate_traffic( ...
-        conf.traffic.minimum_velocity, ...
-        conf.traffic.maximum_velocity, ...
-        conf.traffic.minimum_acceleration, ...
-        conf.traffic.maximum_acceleration, ...
-        conf.traffic.minimum_distance, ...
-        T_c, ...
-        conf.traffic.lane_1.spawn_range, ...
-        conf.traffic.lane_2.spawn_range, ...
-        conf.traffic.lane_1.vehicule_step, ...
-        conf.traffic.lane_2.vehicule_step, ...
-        conf.traffic.lane_1.nb_vehicles, ...
-        conf.traffic.lane_2.nb_vehicles, ...
-        conf.nb_samples ...
-    );
+    vehicles = simulate_traffic(conf.vehicles, conf.nb_samples, T_c);
+    [vehicles.eps_r] = deal(0.2); % Assign eps_r to all vehicles
 
-    % Save the simulation results to an HDF5 file
-    output_file = 'data\positions_lane1.h5';
-    if isfile(output_file)
-        delete(output_file); % Delete the file if it already exists
+    % Always create 3 x nb_samples arrays for positions and velocities
+    if isscalar(conf.antenna.tx.position)
+        tx_positions = vehicles(conf.antenna.tx.position).position;   % 3 x nb_samples
+        tx_velocities = vehicles(conf.antenna.tx.position).velocity;  % 3 x nb_samples
+    else
+        tx_positions = repmat(conf.antenna.tx.position, 1, conf.nb_samples); % 3 x nb_samples
+        tx_velocities = repmat(conf.antenna.tx.velocity, 1, conf.nb_samples);
     end
-    h5create(output_file, '/p1', size(p1)); % Create the dataset
-    h5write(output_file, '/p1', p1);        % Write the data
+
+    if isscalar(conf.antenna.rx.position)
+        rx_positions = vehicles(conf.antenna.rx.position).position;
+        rx_velocities = vehicles(conf.antenna.rx.position).velocity;
+    else
+        rx_positions = repmat(conf.antenna.rx.position, 1, conf.nb_samples);
+        rx_velocities = repmat(conf.antenna.rx.velocity, 1, conf.nb_samples);
+    end
+
+    nb_vehicles = conf.vehicles.nb_vehicles * size(conf.vehicles.initial_pos, 1);
+    results = struct();
+
+    parfor i = 1:conf.nb_samples
+        s_i = struct();  % struct array for time i
+        Tx = struct();
+        Tx.position = tx_positions(:, i);
+        Tx.velocity = tx_velocities(:, i);
+        Rx = struct();
+        Rx.position = rx_positions(:, i);
+        Rx.velocity = rx_velocities(:, i);
+        for k = 1:nb_vehicles
+            s_i(k).position = vehicles(k).position(:, i);
+            s_i(k).velocity = vehicles(k).velocity(:, i);
+            s_i(k).rectangle = vehicles(k).rectangle(:, :, i);
+            s_i(k).eps_r = vehicles(k).eps_r;
+        end
+        [results(i).delay, results(i).A, results(i).f_d] = modelise_paths(Tx, Rx, s_i, conf.emitter.f);
+    end
+    disp('Vehicle positions and velocities:');
+    for i = 1:conf.nb_samples
+        fprintf('Sample %d:\n', i);
+        for k = 1:nb_vehicles
+            pos = vehicles(k).position(:, i);
+            vel = vehicles(k).velocity(:, i);
+            fprintf('  Vehicle %d position: [%g %g %g]\n', k, pos(1), pos(2), pos(3));
+            fprintf('  Vehicle %d velocity: [%g %g %g]\n', k, vel(1), vel(2), vel(3));
+        end
+    end
+    disp('Simulation results:');
+    for i = 1:conf.nb_samples
+        if isfield(results, 'delay') && ~isempty(results(i).delay)
+            fprintf('Sample %d:\n', i);
+            fprintf('  Delay: %s\n', mat2str(results(i).delay));
+            fprintf('  Attenuation (A): %s\n', mat2str(results(i).A));
+            fprintf('  Doppler shift (f_d): %s\n', mat2str(results(i).f_d));
+        else
+            fprintf('Sample %d: No result.\n', i);
+        end
+    end
 end
 
 

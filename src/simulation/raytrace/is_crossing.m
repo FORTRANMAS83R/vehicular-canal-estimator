@@ -1,0 +1,63 @@
+function is_crossing = is_crossing(A, B, P1, P2, P3, P4)
+    % IS_CROSSING - Checks if a segment intersects a rectangle.
+    %
+    % Parameters:
+    %   A, B (array): Endpoints of the segment.
+    %   P1, P2, P3, P4 (array): Vertices of the rectangle.
+    %
+    % Returns:
+    %   is_crossing (logical): True if the segment intersects the rectangle.
+
+    % Calculate the normal vector of the rectangle's plane
+    v1 = P2 - P1;
+    v2 = P4 - P1;
+    normal = cross(v1, v2);
+    normal = normal / norm(normal);
+
+    % Direction of the segment
+    dir = B - A;
+    denom = dot(normal, dir);
+
+    if abs(denom) < 1e-6
+        is_crossing = false;
+        return;
+    end
+
+    % Intersection parameter
+    t = dot(normal, (P1 - A)) / denom;
+
+    if t < 0 || t > 1
+        is_crossing = false;
+        return;
+    end
+
+    % Intersection point
+    I = A + t * dir;
+
+    % Check if the point is inside the rectangle
+    is_crossing = isPointInRectangle(I, P1, P2, P4);
+end
+
+function is_inside = isPointInRectangle(P, P1, P2, P4)
+    % ISPOINTINRECTANGLE - Checks if a point is inside a rectangle.
+    %
+    % Parameters:
+    %   P (array): Point to check.
+    %   P1, P2, P4 (array): Vertices of the rectangle.
+    %
+    % Returns:
+    %   is_inside (logical): True if the point is inside the rectangle.
+
+    u = P2 - P1; % Horizontal side
+    v = P4 - P1; % Vertical side
+    w = P - P1;
+
+    u_norm2 = dot(u, u);
+    v_norm2 = dot(v, v);
+
+    alpha = dot(w, u) / u_norm2;
+    beta = dot(w, v) / v_norm2;
+
+    eps = 1e-4;
+    is_inside = (alpha > eps) && (alpha < 1 - eps) && (beta > eps) && (beta < 1 - eps);
+end

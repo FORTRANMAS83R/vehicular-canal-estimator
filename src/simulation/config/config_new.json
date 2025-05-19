@@ -1,0 +1,28 @@
+{
+  "nb_samples": 2,
+  "seed": 18274,
+  "vehicles": {
+    "nb_vehicles": 2,
+    "d_min": 3,
+    "d_max": 20,
+    "v_min": 8.3,
+    "v_max": 13.9,
+    "initial_pos": [
+      [150, 0, 0],
+      [130, 15, 0]
+    ]
+  },
+  "emitter": {
+    "f": 7e9
+  },
+  "antenna": {
+    "tx": {
+      "position": 2,
+      "velocity": [0, 0, 0]
+    },
+    "rx": {
+      "position": 1,
+      "velocity": [0, 0, 0]
+    }
+  }
+}

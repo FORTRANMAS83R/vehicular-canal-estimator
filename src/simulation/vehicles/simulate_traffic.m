@@ -1,4 +1,5 @@
-function [p1, v1, a1, p2, a2, v2] = simulate_traffic(v_min, v_max, a_min, a_max, d_cible, dt, spawn_range_1, spawn_range_2, vehicule_step_1, vehicule_step_2, nb_vehicules_1, nb_vehicules_2, nb_samples)
+function vehicles = simulate_traffic(conf, nb_samples, T_c)
+    
     % SIMULATE_TRAFFIC - Simulates traffic for two lanes.
     %
     % Parameters:
@@ -19,23 +20,13 @@ function [p1, v1, a1, p2, a2, v2] = simulate_traffic(v_min, v_max, a_min, a_max,
     tic; % Start timing the simulation
 
     % Set traffic parameters
-    traffic_params = set_traffic_params(v_min, v_max, a_min, a_max, d_cible, dt);
+    
+    vehicles_1 = place_vehicles(nb_samples, conf.v_min, conf.v_max, conf.d_min, conf.d_max, conf.initial_pos(1, :).', 1);
+    vehicles_2 = place_vehicles(nb_samples, conf.v_min, conf.v_max, conf.d_min, conf.d_max, conf.initial_pos(2, :).', -1);
 
-    % Define spawn ranges for each lane
-    spawn_range1 = [spawn_range_1(1), spawn_range_1(2), spawn_range_1(3)];
-    spawn_range2 = [spawn_range_2(1), spawn_range_2(2), spawn_range_2(3)];
-
-    % Simulate traffic for both lanes using the traffic manager
-    [p1, v1, a1, p2, a2, v2] = traffic_manager( ...
-        traffic_params, ...
-        {spawn_range1; spawn_range2}, ...
-        [vehicule_step_1, vehicule_step_2], ...
-        [nb_vehicules_1, nb_vehicules_2], ...
-        nb_samples, ...
-        dt ...
-    );
-
-    % Display elapsed time
+    vehicles = [vehicles_1, vehicles_2]; % Combine vehicles from both lanes
+    
+    vehicles = simulate_positions(vehicles, nb_samples, T_c); % Simulate positions
     elapsed_time = toc; % Stop timing
     fprintf('\r \t DONE (%.4f seconds)\n', elapsed_time);
 end
