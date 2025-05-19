@@ -11,6 +11,7 @@ function simulation(json_file)
     % Add the vehicles directory to the MATLAB path
     addpath('src/simulation/vehicles');
     addpath('src/simulation/raytrace');
+    addpath('src/simulation/buildings');
 
     % Check if the JSON configuration file exists
     if ~isfile(json_file)
@@ -27,8 +28,9 @@ function simulation(json_file)
 
     % Run the traffic simulation
     vehicles = simulate_traffic(conf.vehicles, conf.nb_samples, T_c);
+    buildings = simulate_buildings(conf); % Combine vehicles and buildings
     [vehicles.eps_r] = deal(0.2); % Assign eps_r to all vehicles
-
+    points = [vehicles, buildings];
     % Always create 3 x nb_samples arrays for positions and velocities
     if isscalar(conf.antenna.tx.position)
         tx_positions = vehicles(conf.antenna.tx.position).position;   % 3 x nb_samples
@@ -47,6 +49,7 @@ function simulation(json_file)
     end
 
     nb_vehicles = conf.vehicles.nb_vehicles * size(conf.vehicles.initial_pos, 1);
+    nb_buildings = size(conf.buildings.position, 1);
     results = struct();
 
     parfor i = 1:conf.nb_samples
@@ -57,11 +60,11 @@ function simulation(json_file)
         Rx = struct();
         Rx.position = rx_positions(:, i);
         Rx.velocity = rx_velocities(:, i);
-        for k = 1:nb_vehicles
-            s_i(k).position = vehicles(k).position(:, i);
-            s_i(k).velocity = vehicles(k).velocity(:, i);
-            s_i(k).rectangle = vehicles(k).rectangle(:, :, i);
-            s_i(k).eps_r = vehicles(k).eps_r;
+        for k = 1:nb_vehicles + nb_buildings
+            s_i(k).position = points(k).position(:, i);
+            s_i(k).velocity = points(k).velocity(:, i);
+            s_i(k).rectangle = points(k).rectangle(:, :, i);
+            s_i(k).eps_r = points(k).eps_r;
         end
         [results(i).delay, results(i).A, results(i).f_d] = modelise_paths(Tx, Rx, s_i, conf.emitter.f);
     end
@@ -69,8 +72,8 @@ function simulation(json_file)
     for i = 1:conf.nb_samples
         fprintf('Sample %d:\n', i);
         for k = 1:nb_vehicles
-            pos = vehicles(k).position(:, i);
-            vel = vehicles(k).velocity(:, i);
+            pos = points(k).position(:, i);
+            vel = points(k).velocity(:, i);
             fprintf('  Vehicle %d position: [%g %g %g]\n', k, pos(1), pos(2), pos(3));
             fprintf('  Vehicle %d velocity: [%g %g %g]\n', k, vel(1), vel(2), vel(3));
         end
