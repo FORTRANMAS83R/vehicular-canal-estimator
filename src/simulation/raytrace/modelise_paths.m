@@ -14,6 +14,7 @@ function [delay, A, f_d] = modelise_paths(Tx, Rx, points, f_c)
     c = 3e8; % Speed of light in m/s
     f = f_c; % Frequency in Hz
     lambda = c / f; % Wavelength in meters
+    tic; % Start timing the raytracing
 
     % Filter points that intersect with obstacles
     points = filtrerPoints(Tx.position, Rx.position, points);
@@ -59,4 +60,5 @@ function [delay, A, f_d] = modelise_paths(Tx, Rx, points, f_c)
     q(:,nonzero) = q(:,nonzero) ./ norms(nonzero);
     
     f_d = 1 / lambda * ((velocities - Tx.velocity) .* r + (Rx.velocity - velocities) .* q);
+    
 end

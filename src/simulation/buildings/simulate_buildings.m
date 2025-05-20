@@ -7,6 +7,8 @@ function points = simulate_buildings(conf)
     % Returns:
     %   points (struct array): Array of building points with position, velocity, rectangle, and eps_r.
 
+    disp('Starting building simulation...');
+    tic; 
     nb_buildings = size(conf.buildings.position, 1);
     points = struct('position', [], 'velocity', [], 'rectangle', [], 'eps_r', []);
     
@@ -39,4 +41,7 @@ function points = simulate_buildings(conf)
         points(i).rectangle = rectangles; % 3x4xN array for each building
         points(i).eps_r = conf.buildings.eps_r; % Relative permittivity
     end
+    elapsed_time = toc; % Stop timing
+    fprintf('\r \t DONE (%.4f seconds)\n', elapsed_time);
+
 end

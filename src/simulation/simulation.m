@@ -1,4 +1,4 @@
-function simulation(json_file)
+function simulation(json_file, varargin)
     % SIMULATION - Main function to run the vehicular canal simulation
     %
     % Parameters:
@@ -12,7 +12,15 @@ function simulation(json_file)
     addpath('src/simulation/vehicles');
     addpath('src/simulation/raytrace');
     addpath('src/simulation/buildings');
+    addpath('src/utils');
 
+    verbose = false;  
+    for i = 1:length(varargin)
+        arg = varargin{i};
+        if strcmp(arg, '-v')
+            verbose = true;
+        end
+    end
     % Check if the JSON configuration file exists
     if ~isfile(json_file)
         error('No such JSON file found: %s', json_file);
@@ -31,6 +39,8 @@ function simulation(json_file)
     buildings = simulate_buildings(conf); % Combine vehicles and buildings
     [vehicles.eps_r] = deal(0.2); % Assign eps_r to all vehicles
     points = [vehicles, buildings];
+    disp('Starting raytracing...');
+
     % Always create 3 x nb_samples arrays for positions and velocities
     if isscalar(conf.antenna.tx.position)
         tx_positions = vehicles(conf.antenna.tx.position).position;   % 3 x nb_samples
@@ -68,27 +78,34 @@ function simulation(json_file)
         end
         [results(i).delay, results(i).A, results(i).f_d] = modelise_paths(Tx, Rx, s_i, conf.emitter.f);
     end
-    disp('Vehicle positions and velocities:');
-    for i = 1:conf.nb_samples
-        fprintf('Sample %d:\n', i);
-        for k = 1:nb_vehicles
-            pos = points(k).position(:, i);
-            vel = points(k).velocity(:, i);
-            fprintf('  Vehicle %d position: [%g %g %g]\n', k, pos(1), pos(2), pos(3));
-            fprintf('  Vehicle %d velocity: [%g %g %g]\n', k, vel(1), vel(2), vel(3));
-        end
-    end
-    disp('Simulation results:');
-    for i = 1:conf.nb_samples
-        if isfield(results, 'delay') && ~isempty(results(i).delay)
+    results = keep_top_n(results, 3); 
+    if verbose
+        disp('Vehicle positions and velocities:');
+        for i = 1:conf.nb_samples
             fprintf('Sample %d:\n', i);
-            fprintf('  Delay: %s\n', mat2str(results(i).delay));
-            fprintf('  Attenuation (A): %s\n', mat2str(results(i).A));
-            fprintf('  Doppler shift (f_d): %s\n', mat2str(results(i).f_d));
-        else
-            fprintf('Sample %d: No result.\n', i);
+            for k = 1:nb_vehicles
+                pos = points(k).position(:, i);
+                vel = points(k).velocity(:, i);
+                fprintf('  Vehicle %d position: [%g %g %g]\n', k, pos(1), pos(2), pos(3));
+                fprintf('  Vehicle %d velocity: [%g %g %g]\n', k, vel(1), vel(2), vel(3));
+            end
+        end
+        disp('Simulation results:');
+        for i = 1:conf.nb_samples
+            if isfield(results, 'delay') && ~isempty(results(i).delay)
+                fprintf('Sample %d:\n', i);
+                fprintf('  Delay: %s\n', mat2str(results(i).delay));
+                fprintf('  Attenuation (A): %s\n', mat2str(results(i).A));
+                fprintf('  Doppler shift (f_d): %s\n', mat2str(results(i).f_d));
+            else
+                fprintf('Sample %d: No result.\n', i);
+            end
         end
     end
+
+    elapsed_time = toc; % Stop timing
+    fprintf('\r \t DONE (%.4f seconds)\n', elapsed_time);
+    
 end
 
 
