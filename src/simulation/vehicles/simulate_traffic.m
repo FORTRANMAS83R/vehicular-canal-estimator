@@ -21,8 +21,8 @@ function vehicles = simulate_traffic(conf, nb_samples, T_c)
 
     % Set traffic parameters
     
-    vehicles_1 = place_vehicles(nb_samples, conf.v_min, conf.v_max, conf.d_min, conf.d_max, conf.initial_pos(1, :).', 1);
-    vehicles_2 = place_vehicles(nb_samples, conf.v_min, conf.v_max, conf.d_min, conf.d_max, conf.initial_pos(2, :).', -1);
+    vehicles_1 = place_vehicles(conf.nb_vehicles, conf.v_min, conf.v_max, conf.d_min, conf.d_max, conf.initial_pos(1, :).', 1);
+    vehicles_2 = place_vehicles(conf.nb_vehicles, conf.v_min, conf.v_max, conf.d_min, conf.d_max, conf.initial_pos(2, :).', -1);
 
     vehicles = [vehicles_1, vehicles_2]; % Combine vehicles from both lanes
     

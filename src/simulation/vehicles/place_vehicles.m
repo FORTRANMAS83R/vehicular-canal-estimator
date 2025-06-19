@@ -19,7 +19,7 @@ function vehicles = place_vehicles(N, v_min, v_max, d_min, d_max, x_start, lane)
 
     % Place the first vehicle
     vehicles(1).position = x_start;
-    vehicles(1).velocity = [-lane * (rand() * (v_max - v_min) + v_min); 0; 0];
+    vehicles(1).velocity = [lane * (rand() * (v_max - v_min) + v_min); 0; 0];
 
     for i = 2:N
         % Random spacing ≥ d_min
@@ -32,6 +32,6 @@ function vehicles = place_vehicles(N, v_min, v_max, d_min, d_max, x_start, lane)
         alpha = 1 - (i-1)/(N-1);  % Decreases from 1 to 0
         bias = v_min + alpha * (v_max - v_min);
         velocity = bias + randn() * 2;  % Add slight noise
-        vehicles(i).velocity = [-lane * max(min(velocity, v_max), v_min); 0; 0];  % Clamp velocity
+        vehicles(i).velocity = [lane * max(min(velocity, v_max), v_min); 0; 0];  % Clamp velocity
     end
 end

@@ -1,0 +1,48 @@
+{
+  "nb_samples": 500,
+  "seed": 18274,
+  "snr": 20,
+  "vehicles": {
+    "nb_vehicles": 5,
+    "d_min": 3,
+    "d_max": 20,
+    "v_min": 8.3,
+    "v_max": 13.9,
+    "initial_pos": [
+      [0, 0, 1],
+      [50, 10, 1]
+    ]
+  },
+  "buildings": {
+    "position": [
+      [5, -5, 20],
+      [25, -5, 20],
+      [45, -5, 20],
+      [5, 15, 20],
+      [25, 15, 20],
+      [45, 15, 20]
+    ],
+    "height": [40, 40, 40, 40, 40, 40],
+    "length": [20, 20, 20, 20, 20, 20],
+    "eps_r": 4.5
+  },
+  "emitter": {
+    "modulation_type": "bpsk",
+    "__comment__": "Modulation type can be 'bpsk', 'qpsk', '16qam', '64qam'",
+    "params": {
+      "sps": 4,
+      "fc": 14e9,
+      "fs": 500e6
+    }
+  },
+  "antenna": {
+    "tx": {
+      "position": 3,
+      "velocity": [0, 0, 0]
+    },
+    "rx": {
+      "position": 8,
+      "velocity": [0, 0, 0]
+    }
+  }
+}

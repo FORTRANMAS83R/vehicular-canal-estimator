@@ -1,12 +1,20 @@
 # Record the start time of the simulation
 start=$(date +%s)
 
-# Get the JSON configuration file path from the first argument
-JSON_PATH=$1
-echo "Starting the simulation - Configuration path: $JSON_PATH"
+# Get all arguments
+ARGS=("$@")
+JSON_PATH=${ARGS[0]}
+# Build the argument string for MATLAB (enclose each argument in single quotes and separate by commas)
+MATLAB_ARGS="'src/simulation/config/$JSON_PATH'"
+for ((i=1; i<${#ARGS[@]}; i++)); do
+    MATLAB_ARGS+=", '${ARGS[$i]}'"
+done
 
-# Launch MATLAB in batch mode and call the simulation function
-matlab -batch "addpath(genpath('src/simulation')); simulation('src/simulation/config/$JSON_PATH', '$2')"
+echo "Starting the simulation - Configuration path: $JSON_PATH"
+echo "Passing arguments to MATLAB: $MATLAB_ARGS"
+
+# Launch MATLAB in batch mode and call the simulation function with all arguments
+matlab -batch "addpath(genpath('src/simulation')); simulation($MATLAB_ARGS)"
 
 # Record the end time of the simulation
 end=$(date +%s)

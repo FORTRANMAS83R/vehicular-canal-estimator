@@ -1,47 +1,23 @@
 function points = normal_vector(points, Tx)
-    % NORMAL_VECTOR - Orients normal vectors for points.
+    % NORMAL_VECTOR - Sets normal vectors as the y-projection of (Point -> Tx).
     %
     % Parameters:
-    %   points (struct array): Array of points with 'position' and 'velocity'.
-    %   Tx (array): Transmitter position.
+    %   points (struct array): Array of points with 'position'.
+    %   Tx (array): Transmitter position (3x1).
     %
     % Returns:
-    %   points (struct array): Points with oriented normal vectors.
+    %   points (struct array): Points with normal vectors as y-projection.
 
     N = numel(points);
-
-    % Extract positions and velocities into 3xN matrices
-    positions = [points.position];
-    velocities = [points.velocity];
-
-    % Work only in the XY plane (2xN)
-    Vxy = velocities(1:2, :);
-    toTx = Tx(1:2) - positions(1:2, :);
-
-    % Two orthogonal vectors in the plane (±90° rotation)
-    n1 = [-Vxy(2, :); Vxy(1, :)];
-    n2 = [Vxy(2, :); -Vxy(1, :)];
-
-    % Dot products for the two orientations
-    dot1 = sum(n1 .* toTx, 1);
-    dot2 = sum(n2 .* toTx, 1);
-
-    % Choose the correct vector based on the dot product sign
-    use_n1 = dot1 > dot2;
-
-    % Prepare the array of oriented normal vectors
-    Nxy = zeros(2, N);
-    Nxy(:, use_n1) = n1(:, use_n1);
-    Nxy(:, ~use_n1) = n2(:, ~use_n1);
-
-    Nxy = Nxy ./ vecnorm(Nxy); % Normalize
-
-    % Add a z-component of 0
-    N3D = [Nxy; zeros(1, N)];
-
-    % Assign the normal vectors to the structure
     for i = 1:N
-        points(i).n = N3D(:, i);
+        y_diff = Tx(2) - points(i).position(2);
+        % If you want a unit vector (normalize if not zero)
+        if y_diff ~= 0
+            n = [0; sign(y_diff); 0];
+        else
+            n = [0; 0; 0];
+        end
+        points(i).n = n;
     end
 end
 
