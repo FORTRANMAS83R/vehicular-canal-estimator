@@ -65,12 +65,6 @@ Train or evaluate a neural network:
 estimate_K_factor.m
 ```
 
-#### E. Visualization and Evaluation
-Plot RMSE and R² vs SNR:
-```matlab
-plot_results.m
-```
-
 ---
 
 ##  Simulation and Estimation Logic
