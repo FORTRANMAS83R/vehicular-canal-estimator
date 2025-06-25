@@ -1,14 +1,39 @@
-function simulation(varargin)
-    % SIMULATION - Main function to run the vehicular canal simulation
-    %
-    % Parameters:
-    %   json_file (string): Path to the JSON configuration file.
-    %
-    % This function reads the configuration file, calculates the coherence
-    % time based on the maximum Doppler shift, and runs the traffic simulation.
-    % The results are saved in an HDF5 file.
+% filepath: c:\code\liu\vehicular-canal-estimator\src\simulation\simulation.m
+%
+% simulation - Main function to run the vehicular channel simulation.
+%
+% Syntax:
+%   simulation(json_file, [options])
+%
+% Description:
+%   This function runs the end-to-end vehicular channel simulation. It reads the configuration
+%   from a JSON file, sets up the scenario (vehicles, buildings, antennas), computes the coherence
+%   time and sampling frequency, performs ray tracing to model propagation paths, simulates the
+%   channel and transmitted/received signals, and saves the results in an HDF5 file.
+%
+% Inputs:
+%   json_file (string) : Path to the JSON configuration file.
+%
+% Options:
+%   -v           : Verbose mode (prints detailed simulation info)
+%   -output FILE : Specify custom output HDF5 file name
+%   -snr VALUE   : Override SNR value (in dB)
+%   -num_paths N : Number of multipaths to simulate (default: 3)
+%   -h           : Print help and exit
+%
+% Outputs:
+%   None (results are saved to an HDF5 file)
+%
+% Notes:
+%   - The function uses several submodules for traffic, buildings, ray tracing, channel, and emitter.
+%   - The output HDF5 file contains the real and imaginary parts of the received signals and the K-factor for each sample.
+%   - The simulation is parallelized over the number of samples using parfor.
+%
+% Author: Mikael Franco
+%
 
-    % Add the vehicles directory to the MATLAB path
+function simulation(varargin)
+    % Add simulation subdirectories to the MATLAB path
     addpath('src/simulation/vehicles');
     addpath('src/simulation/raytrace');
     addpath('src/simulation/buildings');
@@ -19,6 +44,8 @@ function simulation(varargin)
     verbose = false;  
     num_paths = 3; 
     custom_output = false;
+
+    % Parse command-line arguments
     raw = fileread(varargin{1});
     conf = jsondecode(raw);
     for i = 2:length(varargin)
@@ -47,13 +74,11 @@ function simulation(varargin)
             fprintf('Number of paths: %d\n', num_paths);
         end
     end
+
     % Check if the JSON configuration file exists
     if ~isfile(varargin{1})
         error('No such JSON file found: %s', json_file);
     end
-
-    % Read and decode the JSON configuration file
-
 
     % Calculate the coherence time based on the maximum Doppler shift
     T_c = (40 / conf.vehicles.v_max) * (3e8 / conf.emitter.params.fc); % in seconds
@@ -65,20 +90,19 @@ function simulation(varargin)
     conf.emitter.params.fs = abs(N / T_c); 
     fprintf('Sampling frequency: %.2f Hz\n', conf.emitter.params.fs);
 
-
     fprintf('Simulation duration: %.4f milliseconds\n', T_c * 1000);
     fprintf('Number of samples for the estimation: %d\n', N);
 
-    % Run the traffic simulation
+    % Generate vehicles and buildings
     vehicles = simulate_traffic(conf.vehicles, conf.nb_samples, T_c);
-    fprintf("Vehicles générés : %d\n", numel(vehicles));
-    buildings = simulate_buildings(conf); % Combine vehicles and buildings
+    buildings = simulate_buildings(conf);
 
-    [vehicles.eps_r] = deal(1e5); % Assign eps_r to all vehicles
+    % Assign high permittivity to vehicles (to act as obstacles)
+    [vehicles.eps_r] = deal(1e5);
     points = [vehicles, buildings];
     disp('Starting raytracing...');
 
-    % Always create 3 x nb_samples arrays for positions and velocities
+    % Prepare transmitter and receiver positions/velocities for all samples
     if isscalar(conf.antenna.tx.position)
         tx_positions = vehicles(conf.antenna.tx.position).position;   % 3 x nb_samples
         tx_velocities = vehicles(conf.antenna.tx.position).velocity;  % 3 x nb_samples
@@ -95,16 +119,14 @@ function simulation(varargin)
         rx_velocities = repmat(conf.antenna.rx.velocity, 1, conf.nb_samples);
     end
 
-
     nb_vehicles = conf.vehicles.nb_vehicles * size(conf.vehicles.initial_pos, 1);
     nb_buildings = size(conf.buildings.position, 1);
-    disp("Nombre attendu : " + (nb_vehicles + nb_buildings));
-    disp("Nombre réel : " + numel(points));
     results = struct();
     channel = cell(conf.nb_samples, 1);
     signal_tx = cell(conf.nb_samples, 1); 
     signal_rx = cell(conf.nb_samples, 1);
 
+    % Ray tracing and path modeling for each sample
     parfor i = 1:conf.nb_samples
         s_i = struct();  % struct array for time i
         Tx = struct();
@@ -122,8 +144,7 @@ function simulation(varargin)
         [results(i).delay, results(i).A, results(i).f_d, results(i).K] = modelise_paths(Tx, Rx, s_i, conf.emitter.params.fc, num_paths);
     end
 
-
-
+    % Verbose output for debugging
     if verbose
         disp('Vehicle positions and velocities:');
         for i = 1:conf.nb_samples
@@ -152,7 +173,7 @@ function simulation(varargin)
     elapsed_time = toc; % Stop timing
     fprintf('\r \t DONE (%.4f seconds)\n', elapsed_time);
 
-
+    % Channel simulation and signal transmission/reception
     disp('Starting channel modeling...');
     for i = 1:conf.nb_samples
         channel{i} = create_channel(results(i).delay, results(i).A, results(i).f_d, results(i).K, conf);
@@ -169,17 +190,16 @@ function simulation(varargin)
             conf.emitter.params.fs);
         signal_rx{i} = awgn(signal_rx{i}, conf.snr, 'measured'); % Add noise to the received signal
 
-        
-            a_LOS = a(:,end);           % dernier chemin = LOS
-            mu = mean(a_LOS);
-            sigma2 = mean(abs(a_LOS - mu).^2);
-            K_est = abs(mu)^2 / sigma2;
-
-        %signal_rx{i} = awgn(signal_rx{i}, conf.snr, 'measured');
-
+        % Estimate K-factor from the LOS path
+        a_LOS = a(:,end);           % Last path = LOS
+        mu = mean(a_LOS);
+        sigma2 = mean(abs(a_LOS - mu).^2);
+        K_est = abs(mu)^2 / sigma2;
     end
+
     elapsed_time = toc; % Stop timing
-        % Save received signals to HDF5 file
+
+    % Save received signals to HDF5 file
     [~, config_name, ~] = fileparts(varargin{1});
     if custom_output
         h5_filename = custom_output_file;
@@ -193,7 +213,7 @@ function simulation(varargin)
     for i = 1:conf.nb_samples
         dataset_name = sprintf('/sample_%d', i);
         data = signal_rx{i};
-        % Sauvegarde du signal reçu (parties réelle et imaginaire si complexe)
+        % Save received signal (real and imaginary parts if complex)
         if ~isfloat(data)
             data = double(data); % Convert to double if needed
         end
@@ -206,15 +226,12 @@ function simulation(varargin)
             h5create(h5_filename, dataset_name, size(data));
             h5write(h5_filename, dataset_name, data);
         end
-        % Sauvegarde du K factor
+        % Save K-factor
         h5create(h5_filename, [dataset_name '_K'], 1);
-        h5write(h5_filename, [dataset_name '_K'], results(i).K(end)); % K LOS ou dernier K
+        h5write(h5_filename, [dataset_name '_K'], results(i).K(end)); % K LOS or last K
     end
     disp(['Saved received signals to ', h5_filename]);
     fprintf('\r \t DONE (%.4f seconds)\n', elapsed_time);
-
-
-    
 end
 
 

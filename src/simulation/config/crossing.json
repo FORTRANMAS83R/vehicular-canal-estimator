@@ -1,5 +1,5 @@
 {
-  "nb_samples": 500,
+  "nb_samples": 1000,
   "seed": 18274,
   "snr": 15,
   "vehicles": {
@@ -27,7 +27,7 @@
     "eps_r": 4.5
   },
   "emitter": {
-    "modulation_type": "bpsk",
+    "modulation_type": "sans_modulation",
     "__comment__": "Modulation type can be 'bpsk', 'qpsk', '16qam', '64qam'",
     "params": {
       "sps": 4,

@@ -1,12 +1,31 @@
 function is_crossing = is_crossing(A, B, P1, P2, P3, P4)
-    % IS_CROSSING - Checks if a segment intersects a rectangle.
+    % IS_CROSSING - Checks if a segment intersects a rectangle in 3D space.
     %
-    % Parameters:
-    %   A, B (array): Endpoints of the segment.
-    %   P1, P2, P3, P4 (array): Vertices of the rectangle.
+    % Syntax:
+    %   is_crossing = is_crossing(A, B, P1, P2, P3, P4)
     %
-    % Returns:
-    %   is_crossing (logical): True if the segment intersects the rectangle.
+    % Description:
+    %   This function determines whether the segment [A,B] intersects the rectangle defined
+    %   by the four vertices P1, P2, P3, P4 in 3D space. The intersection is computed by
+    %   finding the intersection point of the segment with the plane of the rectangle and
+    %   then checking if this point lies inside the rectangle.
+    %
+    % Inputs:
+    %   A, B   : [1 x 3] arrays
+    %       Endpoints of the segment.
+    %   P1, P2, P3, P4 : [1 x 3] arrays
+    %       Vertices of the rectangle (ordered).
+    %
+    % Outputs:
+    %   is_crossing : logical
+    %       True if the segment intersects the rectangle, false otherwise.
+    %
+    % Notes:
+    %   - The rectangle is assumed to be planar and defined by its four corners.
+    %   - The function uses a helper function isPointInRectangle to check if a point is inside the rectangle.
+    %
+    % Author: Mikael Franco
+    %
 
     % Calculate the normal vector of the rectangle's plane
     v1 = P2 - P1;
@@ -39,7 +58,7 @@ function is_crossing = is_crossing(A, B, P1, P2, P3, P4)
 end
 
 function is_inside = isPointInRectangle(P, P1, P2, P4)
-    % ISPOINTINRECTANGLE - Checks if a point is inside a rectangle.
+    % isPointInRectangle - Checks if a point is inside a rectangle.
     %
     % Parameters:
     %   P (array): Point to check.

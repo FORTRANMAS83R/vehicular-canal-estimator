@@ -80,3 +80,209 @@ R2 = 1 - sum((K_est - K_true).^2) / sum((K_true - mean(K_true)).^2);
 
 
 end
+
+function plot_CDF()
+    % Paramètres du canal Rician
+h5file = 'data/samples/multiple_snr/snr_0_dB.h5'; % À adapter
+
+% Lecture du premier sample (1000 échantillons)
+real_part = h5read(h5file, '/sample_200_real');
+imag_part = h5read(h5file, '/sample_200_imag');
+K1 = h5read(h5file, '/sample_200_K');
+K = K1; % Facteur K en linéaire
+
+s = sqrt(K / (K + 1));         % Amplitude LOS
+sigma = sqrt(1 / (2 * (K + 1))); % Écart-type bruit (par composante I ou Q)
+disp([K, s, sigma])
+
+% Module du signal réel (normalisé)
+r = sqrt(real_part.^2 + imag_part.^2);
+r = r / mean(r);
+
+% CDF empirique
+[emp_cdf, emp_r] = ecdf(r);
+
+% CDF théorique
+r_th = linspace(0, max([max(r), 5*sigma]), 1000);
+b = s / sigma;  % paramètre de forme
+cdf_th = 1 - marcumq(b, r_th / sigma);  % Fonction CDF de Rice avec marcumq
+cdf_th_interp = interp1(r_th, cdf_th, emp_r, 'linear', 'extrap');
+
+disp('disp([min(r_th/sigma), max(r_th/sigma)]);')
+disp([min(r_th/sigma), max(r_th/sigma)]);
+disp('disp([min(cdf_th), max(cdf_th)]);')
+disp([min(cdf_th), max(cdf_th)]);
+disp(['Empirical mean: ', num2str(mean(r)), ', sigma: ', num2str(std(r))]);
+disp(['Theoretical s: ', num2str(s), ', sigma: ', num2str(sigma)]);
+
+ks_dist = max(abs(emp_cdf - cdf_th_interp));
+fprintf('Distance de Kolmogorov-Smirnov : %.4f\n', ks_dist);
+
+% Calcul du MSE
+rmse = mean((emp_cdf - cdf_th_interp).^2);
+fprintf('MSE entre CDF empirique et théorique : %.4e\n', rmse);
+
+% Tracé
+figure;
+plot(emp_r, emp_cdf, 'b', 'LineWidth', 1.5); hold on;
+plot(r_th, cdf_th, 'r--', 'LineWidth', 1.5);
+legend('CDF empirique', 'CDF théorique (Rice)');
+xlabel('Amplitude');
+ylabel('CDF');
+title(['CDFs comparaison (K = ' num2str(K) ' )']);
+txt = sprintf('RMSE = %.4f\nKS = %.4f', rmse, ks_dist);
+xpos = 0.05 * max(emp_r);
+ypos = 0.2;
+text(xpos, ypos, txt, 'FontSize', 12, 'BackgroundColor', 'w', 'EdgeColor', 'k');
+grid on;
+
+% filepath: c:\code\liu\vehicular-canal-estimator\src\utils\plot_all_cdfs_from_h5.m
+% Trace les CDFs empiriques de tous les samples d'un fichier .h5 sur la même figure
+
+h5file = 'data/samples/multiple_snr/snr_10_dB.h5'; % À adapter
+num_samples = 500; % À adapter selon ton fichier
+
+figure; hold on;
+for i = 1:num_samples
+    real_part = h5read(h5file, sprintf('/sample_%d_real', i));
+    imag_part = h5read(h5file, sprintf('/sample_%d_imag', i));
+    r = sqrt(real_part.^2 + imag_part.^2);
+    r = r / mean(r); % Normalisation (optionnelle)
+    [emp_cdf, emp_r] = ecdf(r);
+    plot(emp_r, emp_cdf, 'Color', [0 0.447 0.741 0.08]); % Couleur bleue, opacité réduite (alpha=0.08)
+end
+xlabel('Amplitude');
+ylabel('CDF');
+title('CDFs empiriques superposées pour tous les samples');
+grid on;
+hold off;
+
+% filepath: c:\code\liu\vehicular-canal-estimator\src\utils\plot_all_cdfs_from_h5.m
+% Trace les CDFs empiriques de tous les samples + le CDF théorique moyen
+
+h5file = 'data/samples/multiple_snr/snr_10_dB.h5'; % À adapter
+num_samples = 500; % À adapter selon ton fichier
+
+all_K = zeros(num_samples,1);
+
+figure; hold on;
+for i = 1:num_samples
+    real_part = h5read(h5file, sprintf('/sample_%d_real', i));
+    imag_part = h5read(h5file, sprintf('/sample_%d_imag', i));
+    r = sqrt(real_part.^2 + imag_part.^2);
+    r = r / mean(r); % Normalisation (optionnelle)
+    [emp_cdf, emp_r] = ecdf(r);
+    plot(emp_r, emp_cdf, 'Color', [0 0.447 0.741 0.08]); % CDF empirique, opacité faible
+    all_K(i) = h5read(h5file, sprintf('/sample_%d_K', i));
+end
+
+% Calcul du CDF théorique moyen (avec K moyen)
+K_mean = mean(all_K);
+s = sqrt(K_mean / (K_mean + 1));
+sigma = sqrt(1 / (2 * (K_mean + 1)));
+r_th = linspace(0, 3, 1000); % Plage d'amplitude normalisée
+b = s / sigma;
+cdf_th = 1 - marcumq(b, r_th / sigma);
+
+plot(r_th, cdf_th, 'r-', 'LineWidth', 2, 'DisplayName', 'CDF théorique (K moyen)');
+
+xlabel('Amplitude');
+ylabel('CDF');
+title('empirical CDFs and theoretical CDF ');
+legend('show');
+grid on;
+hold off;
+
+% filepath: c:\code\liu\vehicular-canal-estimator\src\utils\plot_all_cdfs_from_h5.m
+% Trace les CDFs empiriques de tous les samples + CDF théorique moyen
+% Calcule le RMSE et le KS pour chaque sample et affiche les moyennes
+
+h5file = 'data/samples/multiple_snr/snr_10_dB.h5'; % À adapter
+num_samples = 500; % À adapter selon ton fichier
+
+all_K = zeros(num_samples,1);
+all_KS = zeros(num_samples,1);
+all_RMSE = zeros(num_samples,1);
+
+figure; hold on;
+h_emp = []; % Pour garder un handle sur une courbe empirique
+for i = 1:num_samples
+    real_part = h5read(h5file, sprintf('/sample_%d_real', i));
+    imag_part = h5read(h5file, sprintf('/sample_%d_imag', i));
+    r = sqrt(real_part.^2 + imag_part.^2);
+    r = r / mean(r); % Normalisation (optionnelle)
+    [emp_cdf, emp_r] = ecdf(r);
+    h = plot(emp_r, emp_cdf, 'Color', [0 0.447 0.741 0.08]); % CDF empirique, opacité faible
+    if i == 1
+        h_emp = h; % On garde le handle de la première courbe empiriques
+    end
+    all_K(i) = h5read(h5file, sprintf('/sample_%d_K', i));
+
+    % CDF théorique pour ce sample
+    K = all_K(i);
+    s = sqrt(K / (K + 1));
+    sigma = sqrt(1 / (2 * (K + 1)));
+    r_th = linspace(0, max([max(r), 3]), 1000);
+    b = s / sigma;
+    cdf_th = 1 - marcumq(b, r_th / sigma);
+    cdf_th_interp = interp1(r_th, cdf_th, emp_r, 'linear', 'extrap');
+
+    % Calcul des métriques
+    all_KS(i) = max(abs(emp_cdf - cdf_th_interp));
+    all_RMSE(i) = sqrt(mean((emp_cdf - cdf_th_interp).^2));
+end
+
+% CDF théorique moyen (avec K moyen)
+K_mean = mean(all_K);
+s = sqrt(K_mean / (K_mean + 1));
+sigma = sqrt(1 / (2 * (K_mean + 1)));
+r_th = linspace(0, 3, 1000);
+b = s / sigma;
+cdf_th = 1 - marcumq(b, r_th / sigma);
+h_th = plot(r_th, cdf_th, 'r-', 'LineWidth', 2);
+
+% Moyennes des métriques
+mean_KS = mean(all_KS);
+mean_RMSE = mean(all_RMSE);
+
+% Affichage sur la figure
+txt = sprintf('KS moyen = %.4f\nRMSE moyen = %.4f', mean_KS, mean_RMSE);
+xpos = 0.05 * max(r_th);
+ypos = 0.2;
+text(xpos, ypos, txt, 'FontSize', 12, 'BackgroundColor', 'w', 'EdgeColor', 'k');
+
+xlabel('Amplitude');
+ylabel('CDF');
+title('Theoretical and empirical CDFs ');
+legend([h_emp h_th], {'empirical CDF', 'theorical CDF'}, 'Location', 'best');
+grid on;
+hold off;
+end 
+
+
+function plot_estimation_perf()
+    % filepath: c:\code\liu\vehicular-canal-estimator\src\estimator\neural_networks\plot_train_K_estimator_results.m
+% Parse train_K_estimator_results.txt and plot the results
+
+filename = 'data/train_K_estimator_results.txt';
+results = dlmread(filename);
+
+figure;
+
+subplot(2,1,1);
+plot(results(:,1), 'o-');
+xlabel('File #');
+ylabel('RMSE');
+title('RMSE per file');
+grid on;
+
+subplot(2,1,2);
+plot(results(:,2), 'o-', 'DisplayName', 'R^2');
+hold on;
+plot(results(:,3), 's-', 'DisplayName', 'R^2 lin');
+xlabel('File #');
+ylabel('R^2');
+title('R^2 and R^2 lin per file');
+legend;
+grid on;
+end 
