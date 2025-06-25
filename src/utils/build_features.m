@@ -1,54 +1,95 @@
-% filepath: c:\code\liu\vehicular-canal-estimator\src\features\build_features.m
-%
-% build_features - Extracts features from received signal samples for K-factor estimation.
-%
-% Syntax:
-%   [features, K] = build_features(h5_filename)
-%
-% Description:
-%   This function reads received signal samples from an HDF5 file and computes a set of features
-%   for each sample, intended for use in K-factor estimation or machine learning. Features may include
-%   statistical moments, cumulants, or other descriptors of the signal amplitude distribution.
-%
-% Inputs:
-%   h5_filename : string
-%       Path to the HDF5 file containing received signal samples and K-factor values.
-%
-% Outputs:
-%   features : [N x F] matrix
-%       Feature matrix, where N is the number of samples and F is the number of features extracted.
-%   K        : [N x 1] vector
-%       True K-factor values for each sample (as stored in the HDF5 file).
-%
-% Notes:
-%   - The function assumes each sample is stored as '/sample_i_real', '/sample_i_imag', and '/sample_i_K'.
-%   - Feature extraction can be adapted to include higher-order moments, cumulants, or other statistics.
-%   - The output can be saved to a .mat file for further processing or model training.
-%
-% Author: Mikael Franco
-%
+function build_features(varargin)
+% Wrapper to build features from .h5 files.
+% By default, input is 'data/samples' (folder).
+% Use -input <folder_or_file> and/or -output <output_file> in varargin.
 
-function [features, K] = build_features(h5_filename)
+% Default values
+input = 'data/samples';
+output_file = 'data/all_features_new.mat';
+
+% Parse varargin for -input and -output options
+i = 1;
+while i <= length(varargin)
+    if ischar(varargin{i})
+        if strcmp(varargin{i}, '-input')
+            if i < length(varargin)
+                input = varargin{i+1};
+                i = i + 2;
+                continue;
+            else
+                error('Missing value after -input');
+            end
+        elseif strcmp(varargin{i}, '-output')
+            if i < length(varargin)
+                output_file = varargin{i+1};
+                i = i + 2;
+                continue;
+            else
+                error('Missing value after -output');
+            end
+        end
+    end
+    i = i + 1;
+end
+
+% Determine if input is a directory or a file
+if isfolder(input)
+    files = dir(fullfile(input, '*.h5'));
+    filelist = fullfile({files.folder}, {files.name});
+elseif isfile(input)
+    filelist = {input};
+else
+    error('Input must be a folder or a .h5 file');
+end
+
+all_features = [];
+all_K = [];
+
+for f = 1:length(filelist)
+    h5_filename = filelist{f};
     info = h5info(h5_filename);
-    num_samples = sum(contains({info.Datasets.Name}, '_real'));
-    features = [];
-    K = zeros(num_samples, 1);
+    datasets = {info.Datasets.Name};
+    real_idx = find(contains(datasets, '_real'));
+    N = numel(real_idx);
 
-    for i = 1:num_samples
+    first_real = h5read(h5_filename, sprintf('/sample_%d_real', 1));
+    M = numel(first_real);
+    X = zeros(N, M);
+    K_true = zeros(N, 1);
+
+    for i = 1:N
         real_part = h5read(h5_filename, sprintf('/sample_%d_real', i));
         imag_part = h5read(h5_filename, sprintf('/sample_%d_imag', i));
-        r = sqrt(real_part.^2 + imag_part.^2);
-
-        % Example features: mean, variance, skewness, kurtosis
-        mu = mean(r);
-        sigma2 = var(r);
-        skew = skewness(r);
-        kurt = kurtosis(r);
-
-        % Add more features as needed
-        feat = [mu, sigma2, skew, kurt];
-        features = [features; feat];
-
-        % Read true K-factor
-        K(i) = h5read(h5_filename, sprintf('/sample_%d_K', i));
+        X(i, :) = (real_part + 1i * imag_part).';
+        K_true(i) = h5read(h5_filename, sprintf('/sample_%d_K', i));
     end
+
+    % Feature extraction (same as estimate_K_factor)
+    energy   = sum(abs(X).^2, 2);
+    powerAvg = energy / M;
+    varTime  = var(abs(X), 0, 2);
+    skewTime = skewness(abs(X), 0, 2);
+    kurtTime = kurtosis(abs(X), 0, 2);
+    maxAbs   = max(abs(X), [], 2);
+    medianAbs= median(abs(X), 2);
+    p25      = prctile(abs(X), 25, 2);
+    p75      = prctile(abs(X), 75, 2);
+
+    p = 20;
+    halfM = floor(M/2);
+    X_fft = fft(X, [], 2);
+    X_mag = abs(X_fft(:,1:halfM));
+    if p > halfM
+        error('p must be <= M/2.');
+    end
+    X_spec = X_mag(:, 1:p);
+
+    X_features = [energy, powerAvg, varTime, skewTime, kurtTime, maxAbs, medianAbs, p25, p75, X_spec];
+
+    all_features = [all_features; X_features];
+    all_K = [all_K; K_true];
+end
+
+save(output_file, 'all_features', 'all_K');
+fprintf('Features and K saved to %s\n', output_file);
+end

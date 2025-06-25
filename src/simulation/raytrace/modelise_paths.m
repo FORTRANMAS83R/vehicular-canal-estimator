@@ -105,7 +105,7 @@ function [delay, A, f_d, K] = modelise_paths(Tx, Rx, points, f_c, num_paths)
     A = A_el - 10 * log10(sig);
 
     % Add random fading for multipaths
-    alpha = normrnd(0.25, 0.05, [1, numel(A)]); 
+    alpha = normrnd(0.9, 0.05, [1, numel(A)]); 
     if any(alpha < 0)
         alpha(alpha < 0) = 0.1; 
     end
@@ -133,7 +133,7 @@ function [delay, A, f_d, K] = modelise_paths(Tx, Rx, points, f_c, num_paths)
     K = zeros(1, numel(A)-1);
     P  = 10.^(A / 10);     
     P_los  = P(end);     
-    P_nlos = sum(P) - P_los; 
+    P_nlos = (sum(P) - P_los); 
     K_los = P_los / P_nlos;
     K = [K, K_los]; % Include LOS K factor
 end
