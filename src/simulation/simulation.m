@@ -176,7 +176,6 @@ function simulation(varargin)
     % Channel simulation and signal transmission/reception
     disp('Starting channel modeling...');
     for i = 1:conf.nb_samples
-        channel{i} = create_channel(results(i).delay, results(i).A, results(i).f_d, results(i).K, conf);
         signal_tx{i} = generate_signal(i, conf.emitter.modulation_type, conf.emitter.params, T_c);
         theta = zeros(num_paths, 1); % Initialize theta to zero
          
