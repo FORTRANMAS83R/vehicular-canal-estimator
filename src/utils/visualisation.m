@@ -1,85 +1,85 @@
-% filepath: c:\code\liu\vehicular-canal-estimator\src\estimator\estimate_K_stat.m
-% Estimate K-factor from a raw .h5 file using a statistical estimator, then compute RMSE and R²
-% filepath: c:\code\liu\vehicular-canal-estimator\src\estimator\plot_rmse_r2_vs_snr.m
-% Boucle sur SNR de 0 à 20, appelle estimate_K_stat, stocke et plot RMSE et R2
+% % filepath: c:\code\liu\vehicular-canal-estimator\src\estimator\estimate_K_stat.m
+% % Estimate K-factor from a raw .h5 file using a statistical estimator, then compute RMSE and R²
+% % filepath: c:\code\liu\vehicular-canal-estimator\src\estimator\plot_rmse_r2_vs_snr.m
+% % Boucle sur SNR de 0 à 20, appelle estimate_K_stat, stocke et plot RMSE et R2
 
-rmse_vec = zeros(21,1);
-r2_vec = zeros(21,1);
+% rmse_vec = zeros(21,1);
+% r2_vec = zeros(21,1);
 
-for snr = 0:20
-    filename = sprintf('data/samples/multiple_snr/snr_%d_dB.h5', snr);
-    if exist(filename, 'file')
-        [rmse, R2] = estimate_K_stat(filename);
-        rmse_vec(snr+1) = rmse;
-        r2_vec(snr+1) = R2;
-    else
-        warning('File %s not found.', filename);
-        rmse_vec(snr+1) = NaN;
-        r2_vec(snr+1) = NaN;
-    end
-end
+% for snr = 0:20
+%     filename = sprintf('data/samples/multiple_snr/snr_%d_dB.h5', snr);
+%     if exist(filename, 'file')
+%         [rmse, R2] = estimate_K_stat(filename);
+%         rmse_vec(snr+1) = rmse;
+%         r2_vec(snr+1) = R2;
+%     else
+%         warning('File %s not found.', filename);
+%         rmse_vec(snr+1) = NaN;
+%         r2_vec(snr+1) = NaN;
+%     end
+% end
 
-figure;
-subplot(2,1,1);
-plot(0:20, rmse_vec, 'o-');
-xlabel('SNR (dB)');
-ylabel('RMSE');
-title('RMSE vs SNR');
-grid on;
+% figure;
+% subplot(2,1,1);
+% plot(0:20, rmse_vec, 'o-');
+% xlabel('SNR (dB)');
+% ylabel('RMSE');
+% title('RMSE vs SNR');
+% grid on;
 
-subplot(2,1,2);
-plot(0:20, r2_vec, 's-');
-xlabel('SNR (dB)');
-ylabel('R^2');
-title('R^2 vs SNR');
-grid on;
-function [rmse, R2] = estimate_K_stat(h5file)
-disp(h5file)
-% Lecture des signaux
-info = h5info(h5file);
-datasets = {info.Datasets.Name};
-real_idx = find(contains(datasets, '_real'));
-N = numel(real_idx);
+% subplot(2,1,2);
+% plot(0:20, r2_vec, 's-');
+% xlabel('SNR (dB)');
+% ylabel('R^2');
+% title('R^2 vs SNR');
+% grid on;
+% function [rmse, R2] = estimate_K_stat(h5file)
+% disp(h5file)
+% % Lecture des signaux
+% info = h5info(h5file);
+% datasets = {info.Datasets.Name};
+% real_idx = find(contains(datasets, '_real'));
+% N = numel(real_idx);
 
-K_true = zeros(N,1);
-K_est  = zeros(N,1);
+% K_true = zeros(N,1);
+% K_est  = zeros(N,1);
 
-for i = 1:N
-    real_part = h5read(h5file, sprintf('/sample_%d_real', i));
-    imag_part = h5read(h5file, sprintf('/sample_%d_imag', i));
-    x = real_part + 1i*imag_part;
-    K_true(i) = h5read(h5file, sprintf('/sample_%d_K', i));
-        h_hat = mean(x) / mean(abs(x));
-    % if abs(h_hat) > 0
-    %     x = x / h_hat;
-    % else
-    %     x = x;
-    % end
-    % Estimation statistique du K-factor (méthode de moments)
-    mu = mean(abs(x));
-    sigma2 = var(abs(x));
+% for i = 1:N
+%     real_part = h5read(h5file, sprintf('/sample_%d_real', i));
+%     imag_part = h5read(h5file, sprintf('/sample_%d_imag', i));
+%     x = real_part + 1i*imag_part;
+%     K_true(i) = h5read(h5file, sprintf('/sample_%d_K', i));
+%         h_hat = mean(x) / mean(abs(x));
+%     % if abs(h_hat) > 0
+%     %     x = x / h_hat;
+%     % else
+%     %     x = x;
+%     % end
+%     % Estimation statistique du K-factor (méthode de moments)
+%     mu = mean(abs(x));
+%     sigma2 = var(abs(x));
 
-    %K_est(i) = max(0, mu^2 / sigma2 - 1); % K-factor estimation
-    if sigma2 > 0
-        K_est(i) = (mu^2 - sigma2) / (2*sigma2);
-    else
-        K_est(i) = 0;
-    end
+%     %K_est(i) = max(0, mu^2 / sigma2 - 1); % K-factor estimation
+%     if sigma2 > 0
+%         K_est(i) = (mu^2 - sigma2) / (2*sigma2);
+%     else
+%         K_est(i) = 0;
+%     end
 
-end
+% end
 
-% Affichage des valeurs estimées et vraies
-
-
-% Calcul RMSE et R²
-rmse = sqrt(mean((K_est - K_true).^2));
-R2 = 1 - sum((K_est - K_true).^2) / sum((K_true - mean(K_true)).^2);
+% % Affichage des valeurs estimées et vraies
 
 
-%fprintf('Statistical K-factor estimation: RMSE = %.4f, R2 = %.4f\n', rmse, R2);
+% % Calcul RMSE et R²
+% rmse = sqrt(mean((K_est - K_true).^2));
+% R2 = 1 - sum((K_est - K_true).^2) / sum((K_true - mean(K_true)).^2);
 
 
-end
+% %fprintf('Statistical K-factor estimation: RMSE = %.4f, R2 = %.4f\n', rmse, R2);
+
+
+% end
 
 function plot_CDF()
     % Paramètres du canal Rician
@@ -286,3 +286,87 @@ title('R^2 and R^2 lin per file');
 legend;
 grid on;
 end 
+
+plot_feature_correlation('data/features/dataset_1/snr_0_dB_features.mat');
+% filepath: src/utils/plot_feature_correlation.m
+function plot_feature_correlation(mat_filename)
+% plot_feature_correlation - Trace la matrice de corrélation des features avec noms
+%
+% Le fichier .mat doit contenir une variable 'all_features' (N x 29)
+
+data = load(mat_filename, 'all_features');
+features = data.all_features;
+
+corr_matrix = corrcoef(features);
+
+% Noms des 29 features
+feature_names = { ...
+    'Energy', ...
+    'AvgPower', ...
+    'Variance', ...
+    'Skewness', ...
+    'Kurtosis', ...
+    'MaxAmp', ...
+    'MedianAmp', ...
+    'Q25', ...
+    'Q75' ...
+};
+for k = 1:20
+    feature_names{end+1} = sprintf('mag_%d', k);
+end
+
+figure;
+imagesc(corr_matrix);
+colorbar;
+title('Correlation matrice of features');
+xlabel('Feature');
+ylabel('Feature');
+axis square;
+set(gca, 'XTick', 1:29, 'XTickLabel', feature_names, ...
+         'YTick', 1:29, 'YTickLabel', feature_names, ...
+         'XTickLabelRotation', 90, 'FontSize',8); 
+set(gca, 'TickLength', [0, 0])
+end 
+
+ks_test_rice('data/samples/multiple_snr/snr_0_dB.h5')
+function ks_test_rice(h5_filename)
+% ks_test_rice - Teste si le premier sample d'un fichier .h5 suit une loi de Rice
+%
+% Utilisation :
+%   ks_test_rice('data/mon_fichier.h5')
+
+% Lecture du premier sample (parties réelle et imaginaire)
+real_part = h5read(h5_filename, '/sample_1_real');
+imag_part = h5read(h5_filename, '/sample_1_imag');
+x = real_part + 1i * imag_part;
+r = abs(x);
+
+% Estimation des paramètres de la loi de Rice (méthode des moments)
+mu = sqrt(mean(r)^2 - var(r));
+sigma = sqrt(0.5 * (var(r)));
+
+% Génération d'une distribution de Rice simulée avec ces paramètres
+rice_dist = makedist('Rician', 's', mu, 'sigma', sigma);
+
+% Test de Kolmogorov-Smirnov
+[h, p] = kstest(r, 'CDF', rice_dist);
+
+% Préparation du titre selon le résultat du test
+if h == 0
+    test_str = sprintf('Test KS validé (p = %.3g)', p);
+else
+    test_str = sprintf('rejected (p = %.3g)', p);
+end
+
+% Affichage des distributions
+figure;
+histogram(r, 'Normalization', 'pdf');
+hold on;
+xvals = linspace(min(r), max(r), 100);
+plot(xvals, pdf(rice_dist, xvals), 'r', 'LineWidth', 2);
+legend('Data', 'Rician');
+title(['Test KS  - ' test_str]);
+xlabel('|x|');
+ylabel('Density of probability');
+hold off;
+end
